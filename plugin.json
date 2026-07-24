@@ -1,0 +1,15 @@
+{
+  "name": "conductor-dev",
+  "description": "Dev-domain orchestrator plugin built on conductor-kernel. Supplies architect, builder, QA, devops, and other software-development agents; delegates tier classification, validation, and gate enforcement to conductor-kernel.",
+  "version": "1.1.0",
+  "author": { "name": "bulletproofsoftware-ai" },
+  "homepage": "https://github.com/bulletproofsoftware-ai/conductor-plugin",
+  "license": "MIT",
+  "hooks": "hooks/hooks.json",
+  "commands": "commands",
+  "agents": "agents",
+  "skills": "skills",
+  "requires": {
+    "conductor-kernel": ">= 0.1.0"
+  }
+}

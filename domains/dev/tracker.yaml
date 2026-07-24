@@ -1,0 +1,8 @@
+# Dev-domain BRD tracker configuration (REQ-CDV-003)
+#
+# Defines where conductor-kernel:brd-tracking skill reads and writes the
+# requirement tracker for software-development workflows. SOC and other
+# domains supply their own tracker.yaml in domains/<domain>/.
+
+brd_tracker_path: "BRD-tracker.json"
+default_format: "json"

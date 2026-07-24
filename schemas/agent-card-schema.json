@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/agent-card.schema.json",
+  "title": "Conductor Agent Card",
+  "description": "Identity manifest for an externally callable conductor agent. Only agents flagged external_callable in skills/agent-interop/references/agent-registry.yaml may have a card. Internal-only agents must NOT have cards; the gateway refuses to mint them. The card schema is intentionally minimal — three user-named functional fields (auth_scope, allowed_callers, data_classification_clearance) plus identity essentials. Deferred fields (rate_limits, sla_tier, expires_at, revoked, revocation_reason, model_tier, avg_duration_seconds, trust_level, cryptographic signing) are intentionally out of scope per the spec-drift correction and will be reconsidered in a follow-up enhancement.",
+  "type": "object",
+  "required": [
+    "card_version",
+    "agent_id",
+    "name",
+    "auth_scope",
+    "allowed_callers",
+    "data_classification_clearance",
+    "issued_at",
+    "card_hash"
+  ],
+  "properties": {
+    "card_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+      "description": "Semver of the card itself (not the agent). Accepts 'MAJOR.MINOR' or 'MAJOR.MINOR.PATCH'."
+    },
+    "agent_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Matches agents/{name}.md filename and registry.id (e.g., conductor-ciso)."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-friendly display name for the agent."
+    },
+    "auth_scope": {
+      "type": "string",
+      "enum": ["public", "authenticated", "trusted", "restricted"],
+      "description": "Auth-tier required to invoke this agent. public=no auth; authenticated=any valid API key; trusted=trust_level>=3; restricted=trust_level>=4."
+    },
+    "allowed_callers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["local", "c2_remote", "telegram_bot", "n8n_workflows"]
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Caller types permitted to invoke this agent. local=in-process conductor; c2_remote=remote cmux/control plane; telegram_bot=Telegram bridge; n8n_workflows=n8n automation. Caller types not in this list are denied at the gateway."
+    },
+    "data_classification_clearance": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted"],
+      "description": "Maximum data classification this agent is cleared to process. Caller's request classification must be <= this clearance for the request to proceed."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this card revision was issued. Also serves as the anchor for the 30-day card_missing transition window when the gateway is first deployed."
+    },
+    "card_hash": {
+      "type": "string",
+      "minLength": 1,
+      "description": "SHA-256 hash of the canonical form of the card (all fields except card_hash itself, sorted keys, no insignificant whitespace). Computed and verified by the gateway at load time. On first authoring, set this field to the placeholder string 'PENDING_FIRST_BUILD'; the gateway computes the real hash and rewrites the file on first load. Used for tamper detection only — NOT a cryptographic signature."
+    }
+  },
+  "additionalProperties": false
+}

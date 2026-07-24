@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  REFERENCE PLIST — Hermes E2 Nightly Skill Index Rebuild
+  =========================================================
+  DO NOT install from the repository directly.
+  Operator installation procedure:
+    1. Copy to ~/Library/LaunchAgents/com.conductor.skill-index.plist
+    2. Load: launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.conductor.skill-index.plist
+    3. Verify: launchctl list | grep skill-index
+    4. Confirm first run: jq '.generated_at' ~/.claude/skill-index.json
+
+  To unload:
+    launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.conductor.skill-index.plist
+
+  AC-E2-6 operator verification:
+    - After one nightly cycle, `jq '.generated_at' ~/.claude/skill-index.json` should advance by ~24h.
+    - stdout/stderr are captured in /tmp/conductor-skill-index.log for troubleshooting.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.conductor.skill-index</string>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>2</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>~/Code/conductor-kernel/scripts/build-skill-index.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/tmp</string>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/conductor-skill-index.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/conductor-skill-index.log</string>
+
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

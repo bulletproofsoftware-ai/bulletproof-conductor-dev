@@ -1,0 +1,2416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/conductor-state.schema.json",
+  "title": "Conductor Orchestration State",
+  "description": "Schema for validating conductor-state.json workflow state files",
+  "type": "object",
+  "required": [
+    "project_name",
+    "initiated_at",
+    "last_updated",
+    "current_phase",
+    "current_step",
+    "task_queue",
+    "completed_tasks",
+    "verification_status"
+  ],
+  "properties": {
+    "project_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name of the project being orchestrated"
+    },
+    "initiated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when orchestration started"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp of last state update"
+    },
+    "workflow_type": {
+      "type": "string",
+      "enum": [
+        "new",
+        "existing",
+        "ui-heavy",
+        "brd-provided"
+      ],
+      "description": "Type of workflow being executed"
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "TRIVIAL",
+        "MINOR",
+        "STANDARD",
+        "MAJOR"
+      ],
+      "description": "Tier classification from route-first scoring"
+    },
+    "tier_score": {
+      "type": "number",
+      "minimum": 1.0,
+      "maximum": 4.0,
+      "description": "Weighted score from 5-signal classification matrix (scope, type, risk, ambiguity, intent_sensitivity)"
+    },
+    "tier_override": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether user has manually overridden the tier"
+    },
+    "tier_signals": {
+      "type": "object",
+      "description": "Individual signal scores used for tier classification",
+      "properties": {
+        "scope": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "type": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "risk": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "ambiguity": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "intent_sensitivity": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "How closely this task touches stated intent objectives or hard limits"
+        }
+      }
+    },
+    "tier_reclassified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether tier was reclassified during workflow execution"
+    },
+    "tier_reclassification_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from_tier", "to_tier", "trigger", "timestamp"],
+        "properties": {
+          "from_tier": {
+            "type": "string",
+            "enum": ["TRIVIAL", "MINOR", "STANDARD", "MAJOR"]
+          },
+          "to_tier": {
+            "type": "string",
+            "enum": ["TRIVIAL", "MINOR", "STANDARD", "MAJOR"]
+          },
+          "from_score": {
+            "type": "number"
+          },
+          "to_score": {
+            "type": "number"
+          },
+          "trigger": {
+            "type": "string",
+            "description": "What caused reclassification (e.g., post-brownfield, post-BRD, post-architect, post-CISO, mid-implementation)"
+          },
+          "signals_before": {
+            "type": "object"
+          },
+          "signals_after": {
+            "type": "object"
+          },
+          "phases_added": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "description": "History of tier reclassifications during this workflow"
+    },
+    "gate_mode": {
+      "type": "string",
+      "enum": [
+        "advisory",
+        "blocking",
+        "mixed",
+        "skip"
+      ],
+      "description": "Default gate mode for critic checkpoints based on tier"
+    },
+    "current_phase": {
+      "type": "object",
+      "required": [
+        "number",
+        "name",
+        "started_at"
+      ],
+      "properties": {
+        "number": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "description": "Phase number (integer or string like '0.5', '2.5')"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable phase name"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "current_step": {
+      "type": "object",
+      "required": [
+        "number",
+        "name",
+        "status"
+      ],
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "name": {
+          "type": "string"
+        },
+        "assigned_agent": {
+          "type": "string"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "in_progress",
+            "awaiting_input",
+            "blocked",
+            "completed"
+          ]
+        }
+      }
+    },
+    "task_queue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step",
+          "name",
+          "agent",
+          "status"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "agent": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed",
+              "blocked",
+              "failed"
+            ]
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "completed_tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step",
+          "name",
+          "agent",
+          "completed_at",
+          "outcome"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "agent": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed",
+              "skipped"
+            ]
+          },
+          "deliverables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "duration_minutes": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "blocked_tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step",
+          "name",
+          "blocked_reason"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "blocked_reason": {
+            "type": "string"
+          },
+          "blocked_since": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "blocked_by_step": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "failed_tasks": {
+      "type": "array",
+      "description": "Dead letter queue for tasks that exceeded retry limits",
+      "items": {
+        "type": "object",
+        "required": [
+          "step",
+          "name",
+          "agent",
+          "failure_type",
+          "failed_at",
+          "retry_count"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "agent": {
+            "type": "string"
+          },
+          "failure_type": {
+            "type": "string",
+            "enum": [
+              "deliverable_missing",
+              "quality_failure",
+              "timeout",
+              "error",
+              "validation_failed",
+              "dependency_failed",
+              "agent_error",
+              "escalated"
+            ]
+          },
+          "failure_details": {
+            "type": "string"
+          },
+          "failed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "retry_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "escalation_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "notified",
+              "acknowledged",
+              "resolved"
+            ]
+          }
+        }
+      }
+    },
+    "checkpoints": {
+      "type": "array",
+      "description": "History of checkpoints created during orchestration",
+      "items": {
+        "type": "object",
+        "required": [
+          "checkpoint_id",
+          "trigger",
+          "created_at",
+          "phase",
+          "step"
+        ],
+        "properties": {
+          "checkpoint_id": {
+            "type": "string",
+            "pattern": "^chk_[a-zA-Z0-9_]+$"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "phase_transition",
+              "agent_handoff",
+              "pre_ciso_review",
+              "pre_auto_code",
+              "post_critic_rejection",
+              "pre_git_operation",
+              "time_based",
+              "manual",
+              "pre_risky_operation"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "phase": {
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "step": {
+            "type": "integer"
+          },
+          "git_sha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{7,40}$"
+          },
+          "brd_tracker_hash": {
+            "type": "string",
+            "description": "MD5 hash of BRD-tracker.json at checkpoint time"
+          },
+          "todo_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "complete_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "handoff_history": {
+      "type": "array",
+      "description": "Complete history of agent-to-agent handoffs",
+      "items": {
+        "type": "object",
+        "required": [
+          "handoff_id",
+          "source_agent",
+          "target_agent",
+          "initiated_at",
+          "status"
+        ],
+        "properties": {
+          "handoff_id": {
+            "type": "string",
+            "pattern": "^ho_[a-zA-Z0-9]+$"
+          },
+          "source_agent": {
+            "type": "string"
+          },
+          "target_agent": {
+            "type": "string"
+          },
+          "initiated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed",
+              "failed",
+              "rolled_back"
+            ]
+          },
+          "checkpoint_id": {
+            "type": "string",
+            "description": "Pre-handoff checkpoint for rollback"
+          },
+          "deliverables_expected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deliverables_received": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "failure_reason": {
+            "type": "string"
+          },
+          "rollback_executed": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "remediation_loops": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Count of remediation cycles executed"
+    },
+    "total_critic_rejections": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Count of critic checkpoint rejections"
+    },
+    "agents_invoked": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "List of all agents invoked in this workflow"
+    },
+    "gemini_validations": {
+      "type": "array",
+      "description": "Gemini validation results for every agent dispatch \u2014 full accountability audit trail",
+      "items": {
+        "type": "object",
+        "required": [
+          "validation_id",
+          "agent_validated",
+          "verdict",
+          "validated_at"
+        ],
+        "properties": {
+          "validation_id": {
+            "type": "string",
+            "pattern": "^gv_[a-zA-Z0-9]+$",
+            "description": "Unique validation ID (gv_ prefix + timestamp)"
+          },
+          "agent_validated": {
+            "type": "string",
+            "description": "Name of the agent whose output was validated"
+          },
+          "validator": {
+            "type": "string",
+            "enum": [
+              "gemini-cli"
+            ],
+            "description": "Validation engine used"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "FAIL",
+              "PARTIAL",
+              "ERROR"
+            ],
+            "description": "Validation verdict from Gemini"
+          },
+          "completion_pct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Percentage of deliverables completed"
+          },
+          "deliverables_checked": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "deliverables_passed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "deliverables_failed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Specific issues found by Gemini"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Gemini's assessment summary"
+          },
+          "validated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attempt_number": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Which attempt this is (1 = first try, 2 = re-dispatch after failure)"
+          },
+          "phase": {
+            "type": "string",
+            "description": "Conductor phase during which validation occurred"
+          },
+          "step": {
+            "type": "string",
+            "description": "Conductor step during which validation occurred"
+          },
+          "raw_response_length": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Character count of Gemini's raw response"
+          },
+          "action_taken": {
+            "type": "string",
+            "enum": [
+              "proceed",
+              "proceed_with_warning",
+              "re_dispatch",
+              "escalate_to_user",
+              "skipped"
+            ],
+            "description": "What the conductor did based on this verdict"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "full",
+              "targeted"
+            ],
+            "default": "full",
+            "description": "Whether this was a full validation or targeted re-validation of specific findings"
+          },
+          "dispatch_mode": {
+            "type": "string",
+            "enum": [
+              "task",
+              "code-mode"
+            ],
+            "default": "task",
+            "description": "Hermes E3 (REQ-CDV-HERMES-012): dispatch transport used for this agent invocation. 'task' is the Task tool (default agent loop); 'code-mode' is mcp__MCP_DOCKER__code-mode (programmatic JS over MCP). Flat sibling — NOT nested under .entry. Critic's Code-Mode Constraint Envelope Evidence subsection reads this field."
+          },
+          "finding_resolutions": {
+            "type": "array",
+            "description": "Per-finding resolution status (targeted mode only)",
+            "items": {
+              "type": "object",
+              "required": [
+                "finding_id",
+                "status"
+              ],
+              "properties": {
+                "finding_id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "original_issue": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "RESOLVED",
+                    "UNRESOLVED",
+                    "REGRESSED"
+                  ]
+                },
+                "evidence": {
+                  "type": "string"
+                },
+                "resolution_applied": {
+                  "type": "string",
+                  "description": "What Claude's remediation agent changed to fix this"
+                }
+              }
+            }
+          },
+          "resolved_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unresolved_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "regressed_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "gemini_validation_stats": {
+      "type": "object",
+      "description": "Aggregate stats for Gemini validations across the workflow",
+      "properties": {
+        "total_validations": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "pass_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "fail_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "partial_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "error_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "re_dispatches_triggered": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "escalations_triggered": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "avg_completion_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "ku_ki_extraction": {
+      "type": "object",
+      "description": "KU/KI keyword extraction state from retrospective. Mined from gemini_validations[] to identify phrases correlated with PASS (Key-Useful) vs FAIL/PARTIAL (Key-Irrelevant) verdicts. Production only — downstream consumption by other agents is out of scope.",
+      "properties": {
+        "last_extracted_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 timestamp of the most recent extraction run"
+        },
+        "extraction_file": {
+          "type": "string",
+          "description": "Path to docs/ku-ki-{project}.yaml relative to project root"
+        },
+        "validations_window": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of gemini_validations[] entries analyzed in the most recent run"
+        },
+        "ku_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of Key-Useful phrases identified in the most recent run"
+        },
+        "ki_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of Key-Irrelevant phrases identified in the most recent run"
+        },
+        "min_confidence_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.6,
+          "description": "Minimum correlation threshold for KU classification (P(PASS | phrase present))"
+        },
+        "cold_start": {
+          "type": "boolean",
+          "default": false,
+          "description": "True when fewer than 10 gemini_validations were available; extraction file is empty with explanatory note"
+        }
+      }
+    },
+    "project_signature": {
+      "type": "object",
+      "description": "Per-project style signature accumulated across workflows. Captures behavioral style (conservative, exploratory, ambiguity_tolerance), a rolling Gemini reliability index, and a workflow counter. Optional; absence treated as populated=false (cold-start, no tier bias applied).",
+      "properties": {
+        "populated": {
+          "type": "boolean",
+          "default": false,
+          "description": "False until first retrospective populates it. When false, the orchestrator skips style-modifier application."
+        },
+        "behavioral_tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "conservative",
+              "exploratory",
+              "ambiguity_tolerance"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "Auto-derived style tags from completed workflow outcomes. Limited to the three dimensions specified by the user. Overridden by manual_tags when present."
+        },
+        "manual_tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "conservative",
+              "exploratory",
+              "ambiguity_tolerance"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "Operator-provided tags. When non-empty, takes precedence over behavioral_tags and is NOT overwritten by retrospective auto-derivation."
+        },
+        "reliability_index": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Rolling Gemini PASS rate over the most recent validations (window size from reliability_window_size). Null until total validations meets the minimum (default 10)."
+        },
+        "reliability_window_size": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50,
+          "description": "Number of most-recent gemini_validations[] entries used to compute reliability_index"
+        },
+        "workflow_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of workflows that have contributed to this signature via retrospective Step 11"
+        },
+        "first_populated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 timestamp when populated first transitioned to true"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 timestamp of the most recent signature update"
+        }
+      }
+    },
+    "sbr_state": {
+      "type": "object",
+      "description": "Subclass Brain Registry (SBR) ingestion state. Tracks how this workflow's PASSed gemini_validations have been indexed into the standalone Qdrant 'sbr' collection. Optional; absence indicates SBR has never been run against this workflow. The SBR collection is owned by the sbr skill and is independent of the claude-memory-plugin long_term collection.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether SBR ingestion is enabled for this workflow. When false, scripts/ingest-sbr.sh exits early without contacting Qdrant."
+        },
+        "collection_url": {
+          "type": "string",
+          "format": "uri",
+          "default": "http://localhost:6334/collections/sbr",
+          "description": "Qdrant HTTP endpoint for the sbr collection. Direct HTTP — not routed through claude-memory MCP tools (memory_store does not accept a collection parameter)."
+        },
+        "embedding_model": {
+          "type": "string",
+          "default": "nomic-embed-text",
+          "description": "Ollama embedding model used to vectorize prompt-spec pairs. Must produce 768-dim vectors to match the sbr collection schema. Held constant to keep stored points searchable."
+        },
+        "last_ingested_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 timestamp of the most recent successful ingestion run against this workflow's state"
+        },
+        "points_ingested": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Cumulative count of SBR points successfully upserted from this workflow"
+        },
+        "points_skipped_dedup": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Cumulative count of candidate points skipped because their content-hash ID already existed in the sbr collection (idempotent re-ingestion)"
+        },
+        "points_skipped_sanitization": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Cumulative count of candidate points skipped because sanitization detected disqualifying content (secrets, restricted-classification markers, etc.)"
+        },
+        "last_run_status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "qdrant_unreachable",
+            "ollama_unreachable",
+            "no_eligible_validations",
+            "partial",
+            "error"
+          ],
+          "description": "Outcome of the most recent ingest-sbr.sh run"
+        },
+        "last_run_message": {
+          "type": "string",
+          "description": "Human-readable detail for the last run (e.g., error text or summary line)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "verification_status": {
+      "type": "object",
+      "properties": {
+        "post_ciso": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            "advisory_pass_with_findings",
+            "skipped",
+            null
+          ]
+        },
+        "post_extraction": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            "advisory_pass_with_findings",
+            "skipped",
+            null
+          ]
+        },
+        "post_architect": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            "advisory_pass_with_findings",
+            "skipped",
+            null
+          ]
+        },
+        "post_qa": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            "advisory_pass_with_findings",
+            "skipped",
+            null
+          ]
+        },
+        "post_implementation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            "advisory_pass_with_findings",
+            "skipped",
+            null
+          ]
+        },
+        "post_documentation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            "advisory_pass_with_findings",
+            "skipped",
+            null
+          ]
+        },
+        "post_pentest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            null
+          ],
+          "description": "Always blocking when activated (STANDARD+ tiers only)"
+        },
+        "post_supply_chain": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            null
+          ]
+        },
+        "pre_release": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            null
+          ],
+          "description": "Always blocking when activated (STANDARD+ tiers only)"
+        },
+        "completeness_validation": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            "advisory_pass_with_findings",
+            "skipped",
+            null
+          ],
+          "description": "Completeness validation result \u2014 Phase 7 final gate"
+        },
+        "completeness_report_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Relative path to the completeness report file. Includes timestamp in filename (e.g., completeness-report-20260314T153000Z.json) so multiple runs don't overwrite each other."
+        },
+        "advisory_findings": {
+          "type": "array",
+          "description": "Accumulated advisory findings from non-blocking critic gates",
+          "items": {
+            "type": "object",
+            "properties": {
+              "checkpoint": {
+                "type": "string"
+              },
+              "findings_count": {
+                "type": "integer"
+              },
+              "severity_breakdown": {
+                "type": "object",
+                "properties": {
+                  "critical": {
+                    "type": "integer"
+                  },
+                  "high": {
+                    "type": "integer"
+                  },
+                  "medium": {
+                    "type": "integer"
+                  },
+                  "low": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "summary": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cyclic_execution": {
+      "type": "object",
+      "description": "Tracking for cyclic verification patterns",
+      "properties": {
+        "clarification_loops": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "refinement_loops": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "total_cycles": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "pending_clarifications": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "pending_refinements": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "cycle_history": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "project_characteristics": {
+      "type": "object",
+      "description": "Detected project characteristics for agent capability enforcement",
+      "properties": {
+        "has_api": {
+          "type": "boolean"
+        },
+        "has_ui": {
+          "type": "boolean"
+        },
+        "has_database": {
+          "type": "boolean"
+        },
+        "has_containers": {
+          "type": "boolean"
+        },
+        "has_kubernetes": {
+          "type": "boolean"
+        },
+        "deployment_target": {
+          "type": "string",
+          "enum": [
+            "local",
+            "cloud",
+            "hybrid",
+            "on-premise"
+          ]
+        },
+        "compliance_requirements": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "SOC2",
+              "GDPR",
+              "HIPAA",
+              "PCI-DSS",
+              "ISO27001",
+              "FedRAMP"
+            ]
+          }
+        },
+        "performance_critical": {
+          "type": "boolean"
+        },
+        "security_classification": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "crypto_implementations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Cryptographic implementations found (e.g., SHA-256, RSA-2048, AES-256-GCM)"
+        },
+        "pqc_readiness": {
+          "type": "string",
+          "enum": [
+            "not_assessed",
+            "not_ready",
+            "partial",
+            "ready"
+          ],
+          "description": "Post-quantum cryptography readiness assessment"
+        }
+      }
+    },
+    "agent_instances": {
+      "type": "array",
+      "description": "Non-Human Identity registry \u2014 unique instance ID per agent invocation for full traceability",
+      "items": {
+        "type": "object",
+        "required": [
+          "nhi_id",
+          "agent",
+          "spawned_at",
+          "status"
+        ],
+        "properties": {
+          "nhi_id": {
+            "type": "string",
+            "pattern": "^nhi_[a-z0-9_]+_[0-9]{8}_[a-f0-9]{6}$"
+          },
+          "agent": {
+            "type": "string"
+          },
+          "spawned_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "terminated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed",
+              "killed",
+              "failed"
+            ]
+          },
+          "parent_nhi_id": {
+            "type": "string",
+            "description": "NHI ID of agent that spawned this one"
+          },
+          "tools_used": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "token_usage": {
+            "type": "object",
+            "properties": {
+              "input": {
+                "type": "integer"
+              },
+              "output": {
+                "type": "integer"
+              }
+            }
+          },
+          "constraint_envelope_hash": {
+            "type": "string",
+            "description": "SHA256 hash of the constraint envelope injected at dispatch"
+          },
+          "hard_limits_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of hard limits in the injected constraint envelope"
+          },
+          "prohibited_behaviors_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of prohibited behaviors in the injected constraint envelope"
+          }
+        }
+      }
+    },
+    "audit_sink": {
+      "type": "object",
+      "description": "External audit trail configuration \u2014 ensures logs survive agent compromise",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "syslog_target": {
+          "type": "string",
+          "description": "Destination. For file: absolute path (e.g. /var/log/conductor/audit.jsonl). For syslog-*: host:port. For http: URL.",
+          "default": "/var/log/conductor/audit.jsonl"
+        },
+        "events_to_emit": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "handoff",
+              "gate_decision",
+              "gate_pass",
+              "gate_block",
+              "kill_switch",
+              "escalation",
+              "nhi_spawn",
+              "nhi_terminate",
+              "prohibited_behavior",
+              "phase_transition",
+              "gemini_validation",
+              "gemini_validation_fail",
+              "cost_threshold",
+              "recovery_attempt",
+              "recovery_success",
+              "recovery_exhausted",
+              "compliance_overview_generated",
+              "workflow_complete"
+            ]
+          }
+        },
+        "emit_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "transport": {
+          "type": "string",
+          "enum": [
+            "syslog-udp",
+            "syslog-tcp",
+            "syslog-tls",
+            "http",
+            "file"
+          ],
+          "default": "file",
+          "description": "Transport for audit emission. RECOMMENDED: file (with Wazuh agent tailing it via <localfile log_format=json>) for production. syslog-udp for direct send when no local Wazuh agent. http for SaaS/webhook receivers."
+        },
+        "syslog_facility": {
+          "type": "string",
+          "enum": [
+            "local0",
+            "local1",
+            "local2",
+            "local3",
+            "local4",
+            "local5",
+            "local6",
+            "local7",
+            "user",
+            "auth",
+            "daemon"
+          ],
+          "default": "local0"
+        },
+        "syslog_app_name": {
+          "type": "string",
+          "default": "conductor"
+        },
+        "auth": {
+          "type": "object",
+          "properties": {
+            "hmac_secret_env": {
+              "type": "string",
+              "description": "Env var name holding HMAC-SHA256 secret for HTTP transport signing"
+            }
+          },
+          "additionalProperties": false
+        },
+        "last_error": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "message": {
+              "type": "string"
+            },
+            "at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "secrets_policy": {
+      "type": "object",
+      "description": "Credential management policy \u2014 enforces vault-only architecture",
+      "properties": {
+        "vault_enforced": {
+          "type": "boolean",
+          "default": false
+        },
+        "credential_sources_allowed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "env_var",
+              "vault_reference",
+              "mcp_secret"
+            ]
+          }
+        },
+        "violations_detected": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      }
+    },
+    "cost_tracking": {
+      "type": "object",
+      "description": "Token and cost tracking for denial-of-wallet protection",
+      "properties": {
+        "budget_limit_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "total_tokens_input": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "total_tokens_output": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "estimated_cost_usd": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0
+        },
+        "budget_exceeded": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "intent": {
+      "type": "object",
+      "description": "Intent engineering layer - defines what to optimize for when competing priorities collide. Populated during BRD extraction or project setup. Hard limits may be inherited from CLAUDE.md.",
+      "properties": {
+        "objectives": {
+          "type": "array",
+          "description": "Ranked list of project objectives with measurable signals",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "goal",
+              "priority"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^obj-\\d+$",
+                "description": "Unique objective identifier"
+              },
+              "goal": {
+                "type": "string",
+                "minLength": 5,
+                "description": "Clear statement of what to optimize for"
+              },
+              "signals": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Observable metrics that indicate progress toward this objective"
+              },
+              "priority": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Priority rank (1 = highest). Used for conflict resolution between objectives."
+              },
+              "constraints": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Hard constraints that apply when pursuing this objective"
+              }
+            }
+          }
+        },
+        "trade_offs": {
+          "type": "array",
+          "description": "Explicit rules for resolving competing priorities",
+          "items": {
+            "type": "object",
+            "required": [
+              "dimension_a",
+              "dimension_b",
+              "resolution"
+            ],
+            "properties": {
+              "dimension_a": {
+                "type": "string",
+                "description": "First competing dimension (e.g., speed, security, thoroughness)"
+              },
+              "dimension_b": {
+                "type": "string",
+                "description": "Second competing dimension"
+              },
+              "resolution": {
+                "type": "string",
+                "description": "How to resolve when these dimensions conflict (conditional preferred)"
+              },
+              "fallback": {
+                "type": "string",
+                "description": "Default resolution when resolution condition is not met"
+              }
+            }
+          }
+        },
+        "delegation_boundaries": {
+          "type": "object",
+          "description": "Classification of tasks by required human involvement level",
+          "properties": {
+            "autonomous": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Tasks agents may execute without human confirmation"
+            },
+            "human_in_loop": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Tasks requiring human confirmation before agent execution"
+            },
+            "human_only": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Tasks that must NOT be executed by agents - human-only"
+            }
+          }
+        },
+        "hard_limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Inviolable constraints. Any task touching a hard limit auto-escalates tier. Superset of CLAUDE.md rules + project-specific additions."
+        },
+        "prohibited_behaviors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Behaviors triggering immediate kill switch. Checked by PostToolUse hook."
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "description": "Self-healing workflow recovery state (PRD 12)",
+      "properties": {
+        "last_recovery": {
+          "type": "object",
+          "description": "Most recent recovery event",
+          "properties": {
+            "event_type": {
+              "type": "string",
+              "enum": [
+                "recovery.attempt",
+                "recovery.success",
+                "recovery.exhausted",
+                "recovery.escalated",
+                "recovery.degraded",
+                "recovery.rollback"
+              ]
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "failure_category": {
+              "type": "string",
+              "enum": [
+                "transient",
+                "model",
+                "data",
+                "permission",
+                "logic",
+                "infrastructure",
+                "external"
+              ]
+            },
+            "strategy": {
+              "type": "string",
+              "enum": [
+                "retry",
+                "fallback_agent",
+                "model_downgrade",
+                "graceful_degrade",
+                "wait_and_retry",
+                "escalate"
+              ]
+            },
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "success",
+                "failure",
+                "escalated"
+              ]
+            },
+            "recovery_time_ms": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "event_type",
+            "timestamp",
+            "outcome"
+          ]
+        },
+        "total_recoveries": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "total_escalations": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "active_degradations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "string"
+              },
+              "degradation_type": {
+                "type": "string"
+              },
+              "original_quality": {
+                "type": "string"
+              },
+              "degraded_quality": {
+                "type": "string"
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "maxItems": 50
+        },
+        "mttr": {
+          "type": "object",
+          "description": "Mean-time-to-recovery per failure category",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "avg_ms": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "health_status": {
+          "type": "object",
+          "description": "Current infrastructure health snapshot",
+          "properties": {
+            "overall": {
+              "type": "string",
+              "enum": [
+                "healthy",
+                "degraded",
+                "critical",
+                "unknown"
+              ]
+            },
+            "checked_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "services": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "healthy",
+                      "unhealthy",
+                      "unknown"
+                    ]
+                  },
+                  "last_check": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "consecutive_failures": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "recovery_history": {
+          "type": "array",
+          "description": "Recent recovery events for this workflow",
+          "items": {
+            "type": "object",
+            "required": [
+              "event_type",
+              "timestamp",
+              "failure_category",
+              "strategy",
+              "outcome"
+            ],
+            "properties": {
+              "event_type": {
+                "type": "string",
+                "enum": [
+                  "recovery.attempt",
+                  "recovery.success",
+                  "recovery.exhausted",
+                  "recovery.escalated",
+                  "recovery.degraded",
+                  "recovery.rollback"
+                ]
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "step": {
+                "type": "string"
+              },
+              "failure_category": {
+                "type": "string",
+                "enum": [
+                  "transient",
+                  "model",
+                  "data",
+                  "permission",
+                  "logic",
+                  "infrastructure",
+                  "external"
+                ]
+              },
+              "error": {
+                "type": "string"
+              },
+              "agent": {
+                "type": "string"
+              },
+              "strategy": {
+                "type": "string",
+                "enum": [
+                  "retry",
+                  "fallback_agent",
+                  "model_downgrade",
+                  "graceful_degrade",
+                  "wait_and_retry",
+                  "escalate"
+                ]
+              },
+              "attempt": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "outcome": {
+                "type": "string",
+                "enum": [
+                  "success",
+                  "failure",
+                  "escalated"
+                ]
+              },
+              "recovery_time_ms": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "maxItems": 100
+        }
+      }
+    },
+    "event_routing": {
+      "type": "object",
+      "description": "Event-driven automation state (PRD 13)",
+      "properties": {
+        "events_emitted": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "events_routed": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "events_failed": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "dead_letter_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "last_event": {
+          "type": "object",
+          "properties": {
+            "event_type": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "handlers_triggered": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "event_type",
+            "timestamp"
+          ]
+        },
+        "throughput": {
+          "type": "object",
+          "description": "Event throughput by category",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "count_1h": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "count_24h": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "outcome_metrics": {
+      "type": "object",
+      "description": "Outcome measurement state (PRD 15)",
+      "properties": {
+        "task_completion_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Decimal ratio 0.0-1.0 (not percentage)"
+        },
+        "first_pass_success_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Decimal ratio 0.0-1.0 (not percentage)"
+        },
+        "avg_ttr_minutes": {
+          "type": "number",
+          "minimum": 0
+        },
+        "total_rework_cycles": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "cost_per_outcome_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "quality_trend": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "avg_quality_score": {
+                "type": "number"
+              },
+              "completion_rate": {
+                "type": "number"
+              },
+              "first_pass_rate": {
+                "type": "number"
+              }
+            }
+          },
+          "maxItems": 365
+        },
+        "recovery_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Ratio of successful recoveries to total recovery attempts"
+        },
+        "context_efficiency": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Ratio of useful output tokens to total input tokens consumed"
+        }
+      }
+    },
+    "predictive_scaling": {
+      "type": "object",
+      "description": "Predictive scaling state (PRD 16)",
+      "properties": {
+        "session_prediction": {
+          "type": "object",
+          "properties": {
+            "predicted_tier": {
+              "type": "string",
+              "enum": [
+                "TRIVIAL",
+                "MINOR",
+                "STANDARD",
+                "MAJOR"
+              ]
+            },
+            "predicted_agent_count": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "predicted_token_consumption": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "predicted_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "based_on_tasks": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "cost_forecast": {
+          "type": "object",
+          "properties": {
+            "spent_to_date_usd": {
+              "type": "number",
+              "minimum": 0
+            },
+            "remaining_estimate_usd": {
+              "type": "number",
+              "minimum": 0
+            },
+            "confidence_interval_low": {
+              "type": "number",
+              "minimum": 0
+            },
+            "confidence_interval_high": {
+              "type": "number",
+              "minimum": 0
+            },
+            "projected_total_usd": {
+              "type": "number",
+              "minimum": 0
+            },
+            "budget_usd": {
+              "type": "number",
+              "minimum": 0
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "on_track",
+                "at_risk",
+                "over_budget"
+              ]
+            }
+          }
+        },
+        "model_routing_override": {
+          "type": "object",
+          "properties": {
+            "default_tier": {
+              "type": "string",
+              "enum": [
+                "opus",
+                "sonnet",
+                "haiku"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "expires_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "routing_log": {
+          "type": "array",
+          "description": "History of model routing decisions made by the prediction engine",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "agent": {
+                "type": "string"
+              },
+              "requested_model": {
+                "type": "string"
+              },
+              "routed_model": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "agent_gateway": {
+      "type": "object",
+      "description": "A2A external agent interop state (PRD 17)",
+      "properties": {
+        "active_jobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "job_id": {
+                "type": "string"
+              },
+              "agent_id": {
+                "type": "string"
+              },
+              "caller_type": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "working",
+                  "completed",
+                  "failed"
+                ]
+              },
+              "submitted_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "job_id",
+              "status",
+              "submitted_at"
+            ]
+          },
+          "maxItems": 20
+        },
+        "total_external_invocations": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "rate_limit_hits": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      }
+    },
+    "circuit_breaker": {
+      "type": "object",
+      "description": "Circuit breaker state for external integrations",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "closed",
+            "open",
+            "half_open"
+          ],
+          "default": "closed"
+        },
+        "failure_count": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "last_failure_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "opens_at_failures": {
+          "type": "integer",
+          "default": 5
+        },
+        "half_open_after_seconds": {
+          "type": "integer",
+          "default": 300
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "description": "Governance framework state for this conductor session",
+      "properties": {
+        "manifest_id": {
+          "type": "string"
+        },
+        "manifest_version": {
+          "type": "string"
+        },
+        "manifest_hash": {
+          "type": "string"
+        },
+        "trust_level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "session_classification": {
+          "type": "string",
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "restricted"
+          ]
+        },
+        "audit_session_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "human_gate_required": {
+          "type": "boolean"
+        },
+        "autonomy_depth_current": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "autonomy_depth_max": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "conductor_tier": {
+          "type": "string",
+          "enum": [
+            "TRIVIAL",
+            "MINOR",
+            "STANDARD",
+            "MAJOR"
+          ]
+        }
+      },
+      "required": [
+        "manifest_id",
+        "audit_session_id",
+        "trust_level"
+      ]
+    },
+    "agent_card_validations": {
+      "type": "array",
+      "description": "Optional audit log of agent card validation outcomes recorded by conductor-agent-gateway. Each entry captures the result of validating a single external invocation against the called agent's card. Backward compatible: existing state files without this field remain valid.",
+      "items": {
+        "type": "object",
+        "required": [
+          "timestamp",
+          "agent",
+          "caller",
+          "result",
+          "transition_window"
+        ],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO-8601 timestamp at which the validation occurred."
+          },
+          "agent": {
+            "type": "string",
+            "minLength": 1,
+            "description": "agent_id that was the target of the external invocation."
+          },
+          "caller": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Caller system identifier as resolved from the authentication method (e.g., conductor, telegram-bridge, n8n, c2)."
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "validated",
+              "missing",
+              "caller_denied",
+              "classification_denied"
+            ],
+            "description": "Outcome of the card check. validated=both checks passed; missing=no card found for the agent; caller_denied=caller not in allowed_callers; classification_denied=request classification exceeded card clearance."
+          },
+          "transition_window": {
+            "type": "boolean",
+            "description": "True if this validation outcome occurred during the 30-day card_missing soft-fail transition window. False otherwise. For non-missing outcomes this field should be false."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version for migration support",
+      "default": "2.0.0"
+    },
+    "change_log": {
+      "type": "object",
+      "description": "Hermes E6 — per-tool-call attribution log metadata (REQ-CDV-HERMES-001/002)",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Project-relative path to active log (default: .conductor/change-log.jsonl)"
+        },
+        "entries_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total entries appended to active log this workflow"
+        },
+        "last_entry_ts": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "archive_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of .jsonl.gz files in .conductor/change-log-archive/"
+        },
+        "rotation_threshold_bytes": {
+          "type": "integer",
+          "default": 104857600,
+          "description": "100MB by default"
+        }
+      }
+    },
+    "code_mode_latency": {
+      "type": "array",
+      "description": "Hermes E3 (REQ-CDV-HERMES-015): paired latency measurements between task-mode baseline and code-mode actual runs for the same fan-out template. Top-level sibling to gemini_validations and change_log. Additive — backward compatible. Moved from properties.metrics.properties.code_mode_latency to top-level per Gemini E3 validation 2026-05-20.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fanout_template", "task_mode_baseline_ms", "code_mode_actual_ms", "measured_at"],
+        "properties": {
+          "fanout_template": {
+            "type": "string",
+            "description": "Identifier of the fan-out template (e.g., 'evidence-collector-fanout')."
+          },
+          "task_mode_baseline_ms": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Latency of the same fan-out via task mode."
+          },
+          "code_mode_actual_ms": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Latency of the same fan-out via code-mode."
+          },
+          "measured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ratio": {
+            "type": "number",
+            "description": "Derived: 1 - (code_mode_actual_ms / task_mode_baseline_ms). Positive = code-mode faster."
+          }
+        }
+      }
+    },
+    "skill_promotion": {
+      "type": "object",
+      "description": "Hermes E1 — skill promotion candidates and history (REQ-CDV-HERMES-009/010/011). OPTIONAL block. Mirror of the kernel v3.0 schema fragment so dev v2.0 state files can record promotion lifecycle without schema upgrade. Recorded by the retrospective agent's Section 4 mining and updated by skill-promote.sh / skill-promote-patch.sh on operator action.",
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "type": "array",
+          "description": "Trajectory-pattern promotion candidates surfaced for operator review.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["trajectory_ids", "proposed_skill_path", "drafted_at", "status"],
+            "properties": {
+              "trajectory_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 3,
+                "description": "Qdrant trajectory IDs that contributed to this candidate (>=3 per the §3.6 hard limit)."
+              },
+              "proposed_skill_path": {
+                "type": "string",
+                "description": "Filesystem path of the drafted SKILL.md under ~/.claude/skills/_proposed/<slug>/"
+              },
+              "success_count": {
+                "type": "integer",
+                "minimum": 3,
+                "description": "Number of outcome.success trajectories matching the pattern in the 90-day window."
+              },
+              "trajectory_pattern_hash": {
+                "type": ["string", "null"],
+                "description": "SHA-256 of the pipe-joined execution_trace[].tool sequence."
+              },
+              "drafted_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "approved", "rejected"]
+              },
+              "rejection_reason": {"type": ["string", "null"]},
+              "promoted_at": {"type": ["string", "null"], "format": "date-time"}
+            }
+          }
+        },
+        "patches": {
+          "type": "array",
+          "description": "Skill self-improvement patch candidates surfaced from change-log re-edit analysis.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target_skill", "patch_path", "drafted_at", "status"],
+            "properties": {
+              "target_skill": {
+                "type": "string",
+                "description": "Slug of the skill the patch targets (matches ~/.claude/skills/<slug>/)."
+              },
+              "patch_path": {
+                "type": "string",
+                "description": "Filesystem path of the unified diff under ~/.claude/skills/_patches/"
+              },
+              "drafted_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "applied", "rejected"]
+              },
+              "re_edit_clusters": {
+                "type": "integer",
+                "minimum": 3,
+                "description": "Number of <5min edit clusters detected in the 90-day window."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

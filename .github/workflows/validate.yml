@@ -1,0 +1,204 @@
+name: Plugin Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Note: this workflow does NOT use github.event.* fields directly in any run: block.
+# All inputs are repository contents (checked out via actions/checkout) plus tool output.
+
+jobs:
+  shell-lint:
+    name: Shell scripts (shellcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run shellcheck on every hook script
+        run: |
+          set -euo pipefail
+          FAIL=0
+          while IFS= read -r script; do
+            echo "::group::shellcheck $script"
+            shellcheck -x "$script" || FAIL=1
+            echo "::endgroup::"
+          done < <(find hooks/scripts -type f -name '*.sh')
+          [ "$FAIL" -eq 0 ] || { echo "::error::shellcheck failures"; exit 1; }
+
+  schema:
+    name: JSON schema (Draft 2020-12 + state validation)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install validators
+        run: pip install --quiet jsonschema check-jsonschema
+      - name: Validate schema is valid JSON Schema Draft 2020-12
+        run: |
+          python -c "
+          import json, jsonschema
+          schema = json.load(open('schemas/conductor-state.schema.json'))
+          jsonschema.Draft202012Validator.check_schema(schema)
+          print('PASS: schema is valid Draft 2020-12')
+          "
+      - name: Validate live conductor-state.json against schema (if present)
+        run: |
+          if [ -f conductor-state.json ]; then
+            python -c "
+          import json, jsonschema
+          schema = json.load(open('schemas/conductor-state.schema.json'))
+          state = json.load(open('conductor-state.json'))
+          jsonschema.validate(state, schema)
+          print('PASS: conductor-state.json validates')
+          "
+          else
+            echo "no conductor-state.json in repo, skipping"
+          fi
+
+  yaml-lint:
+    name: YAML reference files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install yamllint
+        run: pip install --quiet yamllint
+      - name: Lint every YAML reference file
+        run: |
+          set -euo pipefail
+          FAIL=0
+          while IFS= read -r yfile; do
+            yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: disable, comments-indentation: disable, indentation: {spaces: 2, indent-sequences: consistent}}}" "$yfile" || FAIL=1
+          done < <(find skills -type f \( -name '*.yaml' -o -name '*.yml' \))
+          [ "$FAIL" -eq 0 ] || { echo "::error::yamllint failures"; exit 1; }
+
+  agent-consistency:
+    name: Agent count + registry consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify every registry agent has a corresponding file
+        run: |
+          set -euo pipefail
+          MISSING=0
+          REGISTRY="skills/agent-interop/references/agent-registry.yaml"
+          while IFS= read -r agent; do
+            if grep -A2 "^  ${agent}:" "$REGISTRY" | grep -q "PLANNED"; then
+              continue
+            fi
+            if [ ! -f "agents/${agent}.md" ]; then
+              echo "::error::Registry references agent '${agent}' but agents/${agent}.md does not exist"
+              MISSING=$((MISSING + 1))
+            fi
+          done < <(grep -E "^  conductor-" "$REGISTRY" | sed 's/^  //;s/:.*//')
+          [ "$MISSING" -eq 0 ] || { echo "::error::${MISSING} agent files missing"; exit 1; }
+          echo "PASS: every implemented registry agent has a corresponding file"
+
+  agent-frontmatter:
+    name: Agent files have valid frontmatter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet pyyaml
+      - name: Verify every agent has name + description + model
+        run: |
+          python <<'PY'
+          import os, sys, yaml, glob
+
+          required = {'name', 'description', 'model'}
+          fail = 0
+          for path in sorted(glob.glob('agents/*.md')):
+              with open(path) as f:
+                  text = f.read()
+              if not text.startswith('---\n'):
+                  print(f"::error file={path}::missing YAML frontmatter")
+                  fail += 1
+                  continue
+              try:
+                  end = text.index('\n---\n', 4)
+              except ValueError:
+                  print(f"::error file={path}::unterminated frontmatter")
+                  fail += 1
+                  continue
+              meta = yaml.safe_load(text[4:end])
+              missing = required - set(meta.keys() if isinstance(meta, dict) else [])
+              if missing:
+                  print(f"::error file={path}::missing keys: {missing}")
+                  fail += 1
+              if isinstance(meta, dict) and meta.get('name', '').strip() != os.path.splitext(os.path.basename(path))[0]:
+                  print(f"::error file={path}::name does not match filename")
+                  fail += 1
+          if fail:
+              sys.exit(1)
+          print(f"PASS: all agent files have valid frontmatter ({len(glob.glob('agents/*.md'))} agents)")
+          PY
+
+  skill-references:
+    name: Skill reference files exist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify every reference file mentioned in SKILL.md exists
+        run: |
+          set -euo pipefail
+          FAIL=0
+          for skill_md in skills/*/SKILL.md; do
+              skill_dir="$(dirname "$skill_md")"
+              while IFS= read -r ref; do
+                  full="${skill_dir}/${ref}"
+                  if [ ! -e "$full" ]; then
+                      echo "::error file=${skill_md}::missing reference: ${ref}"
+                      FAIL=1
+                  fi
+              done < <(grep -oE "references/[a-zA-Z0-9_./-]+\.(yaml|yml|md|json)" "$skill_md" | sort -u)
+          done
+          [ "$FAIL" -eq 0 ] || exit 1
+          echo "PASS: all SKILL.md reference files exist"
+
+  secrets-scan:
+    name: Secrets scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  runtime-hook-test:
+    name: Hook runtime smoke test
+    runs-on: ubuntu-latest
+    needs: [shell-lint, schema]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq + python jsonschema
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y jq
+          pip install --quiet jsonschema
+      - name: post-state-write hook accepts valid state
+        run: |
+          if [ -f conductor-state.json ]; then
+            INPUT="{\"tool_input\":{\"file_path\":\"$PWD/conductor-state.json\"}}"
+            echo "$INPUT" | bash hooks/scripts/post-state-write.sh
+          else
+            echo "no live state file in repo, skipping runtime test"
+          fi
+      - name: post-state-write hook ignores non-conductor files
+        run: |
+          INPUT='{"tool_input":{"file_path":"/tmp/some-other-file.json"}}'
+          echo "$INPUT" | bash hooks/scripts/post-state-write.sh
+      - name: session-start hook exits cleanly
+        run: bash hooks/scripts/session-start.sh

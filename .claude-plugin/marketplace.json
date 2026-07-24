@@ -1,0 +1,14 @@
+{
+  "name": "conductor-dev",
+  "description": "Dev-domain orchestrator (depends on conductor-kernel)",
+  "owner": { "name": "bulletproofsoftware-ai" },
+  "plugins": [
+    {
+      "name": "conductor-dev",
+      "description": "Dev-domain orchestrator built on conductor-kernel. Architect, builder, QA, devops, frontend-designer, and 13 other dev agents.",
+      "version": "1.1.0",
+      "source": "./",
+      "author": { "name": "bulletproofsoftware-ai" }
+    }
+  ]
+}

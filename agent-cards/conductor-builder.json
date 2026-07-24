@@ -1,0 +1,13 @@
+{
+  "card_version": "1.0",
+  "agent_id": "conductor-dev:builder",
+  "name": "Implementation Builder",
+  "auth_scope": "trusted",
+  "allowed_callers": [
+    "local",
+    "c2_remote"
+  ],
+  "data_classification_clearance": "internal",
+  "issued_at": "2026-05-11T00:00:00Z",
+  "card_hash": "PENDING_FIRST_BUILD"
+}
