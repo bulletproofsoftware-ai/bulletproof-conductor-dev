@@ -23,7 +23,7 @@ Key design properties:
 
 ```bash
 # 1. Install conductor-kernel first (required dependency)
-git clone https://github.com/bulletproofsoftware-ai/conductor-kernel.git
+git clone https://github.com/bulletproofsoftware-ai/bulletproof-conductor-kernel.git
 ln -s "$(pwd)/conductor-kernel" ~/.claude/plugins/local/conductor-kernel
 
 # 2. Install conductor-dev
@@ -267,7 +267,7 @@ docs/                        Architecture decisions, retrospectives, runbooks
 
 ## Companion Tools
 
-- **[conductor-kernel](https://github.com/bulletproofsoftware-ai/conductor-kernel)** — required dependency (>= 0.1.0). Supplies orchestration primitives, 19 kernel agents, and 14 skills.
+- **[conductor-kernel](https://github.com/bulletproofsoftware-ai/bulletproof-conductor-kernel)** — required dependency (>= 0.1.0). Supplies orchestration primitives, 19 kernel agents, and 14 skills.
 - **[conductor-dashboard](https://github.com/bulletproofsoftware-ai/conductor-dashboard)** — real-time UI watching `conductor-state.json` via filesystem events
 - **[claude-memory-plugin](https://github.com/bulletproofsoftware-ai/claude-memory-plugin)** — Qdrant-backed persistent memory used by `conductor-kernel:retrospective`
 - **[governance-plugin](https://github.com/bulletproofsoftware-ai/governance-plugin)** — identity manifests, constitutional contracts, audit bus integration
