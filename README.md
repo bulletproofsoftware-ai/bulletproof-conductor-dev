@@ -194,7 +194,7 @@ This plugin implements or integrates with all 17 [BulletproofSoftware PRDs](http
 | 1 | Plugin Ecosystem | Reference implementation |
 | 2 | **Multi-Agent Orchestration** | **Owner** — see `agents/conductor.md` |
 | 3 | Context Management | `context-management` skill |
-| 4 | Persistent Vector Memory | Sister plugin (claude-memory-plugin) — conductor uses it |
+| 4 | Persistent Vector Memory | Sister plugin (bulletproof-memory) — conductor uses it |
 | 5 | Agent Governance | Sister plugin (governance-plugin) — `governance` schema block integrates |
 | 6 | Memory Dashboard | External — schema supports event emission |
 | 7 | Markdown for Agents | External |
