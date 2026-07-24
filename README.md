@@ -4,6 +4,10 @@
 
 Multi-agent workflow orchestrator with **programmatic phase-gate enforcement**, **independent Gemini validation**, BRD requirement tracking, and persistent state. Built for compliance-grade software development workflows that need a verifiable audit trail.
 
+![bulletproof-conductor-dev — overview](docs/media/infographic.png)
+
+> **Media:** a system-overview [explainer video](media/system-overview.mp4) and [technical briefing](media/system-overview.md) accompany this README. Full docs live in [`docs/`](docs/OVERVIEW.md).
+
 ## What It Does
 
 The Conductor classifies every request into a tier (TRIVIAL → MAJOR), then routes the work through a phase pipeline with verification gates that are programmatically enforced — not advisory. State persists in `conductor-state.json` (validated against the kernel JSON schema on every write) and every requirement is tracked from extraction through completion in `BRD-tracker.json` (location governed by `domains/dev/tracker.yaml`).
@@ -138,7 +142,7 @@ Six enhancements derived from Anthropic's Hermes agentic-runtime paper (commits 
 
 **E5 agentskills.io standard alignment** also adds `agentskills-validator.sh` (against the local snapshot at `conductor-kernel/scripts/references/agentskills-spec-v1.json`) and the companion `writing-skills-agentskills-extension` skill.
 
-**Verification**: Code Hardener score 1000/1000 across 12 scanners. Claude adversarial review PASS WITH NOTES — all HIGH findings remediated in `e26fdb1`. Gemini-CLI was structurally unavailable for this workload . See also `docs/hardening-report-2026-05-20.md`.
+**Verification**: The Hermes enhancements passed a Code Hardener standard scan and Claude adversarial review with all HIGH findings remediated. The current published scan artifacts for this repo live in [`docs/scan/`](docs/scan/scan-report.md).
 
 ## Deterministic Workflows (opt-in)
 
@@ -148,8 +152,7 @@ Two self-contained, loop-shaped phases run as `Workflow`-tool scripts under `wor
 no mandatory step can be skipped. Trigger with `/conduct workflow hardening` or
 `/conduct workflow adversarial`. The conductor keeps ownership of `conductor-state.json`, gate
 enforcement, human-approval gates, and the git ratchet; the scripts return validated JSON the
-conductor persists. Verified structurally and at the Code Hardener `/api/v1` contract level;
-full live scan deferred pending CH scan-quota (see `docs/verification/2026-06-01-workflow-live-run.md`).
+conductor persists. Verified structurally and at the Code Hardener `/api/v1` contract level.
 See `workflows/README.md` for authoring rules.
 
 ## Hookify Enforcement (operator-installed)
@@ -280,4 +283,4 @@ Security vulnerabilities: see [`SECURITY.md`](SECURITY.md) — do not open publi
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+Apache-2.0 © 2026 bulletproofsoftware-ai. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
