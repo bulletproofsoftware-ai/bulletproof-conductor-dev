@@ -27,7 +27,7 @@ git clone https://github.com/bulletproofsoftware-ai/bulletproof-conductor-kernel
 ln -s "$(pwd)/conductor-kernel" ~/.claude/plugins/local/conductor-kernel
 
 # 2. Install conductor-dev
-git clone https://github.com/bulletproofsoftware-ai/conductor-plugin.git conductor-dev
+git clone https://github.com/bulletproofsoftware-ai/bulletproof-conductor-dev.git conductor-dev
 ln -s "$(pwd)/conductor-dev" ~/.claude/plugins/local/conductor-dev
 ```
 
@@ -72,7 +72,7 @@ Five-signal weighted matrix (scope 0.25 + type 0.20 + risk 0.20 + ambiguity 0.15
 
 Auto-escalation: any task touching the `intent.hard_limits[]` jumps to STANDARD minimum.
 
-## Dev-Domain Agents (18 in this plugin + dispatcher)
+## Dev-Domain Agents (17 agents + the dispatcher = 18 files)
 
 Dispatched as `conductor-dev:<name>`. (For v1.0.x backward compatibility, bare `conductor-<name>` still resolves to the same files.)
 
@@ -82,7 +82,7 @@ Dispatched as `conductor-dev:<name>`. (For v1.0.x backward compatibility, bare `
 ### Quality and operations (5)
 `conductor-qa`, `conductor-qa-review`, `conductor-performance`, `conductor-observability`, `conductor-devops`
 
-### Workflow and interop (4)
+### Workflow and interop (3)
 `conductor-project-setup`, `conductor-n8n`, `conductor-agent-gateway`
 
 ### Dispatcher
@@ -138,7 +138,7 @@ Six enhancements derived from Anthropic's Hermes agentic-runtime paper (commits 
 
 **E5 agentskills.io standard alignment** also adds `agentskills-validator.sh` (against the local snapshot at `conductor-kernel/scripts/references/agentskills-spec-v1.json`) and the companion `writing-skills-agentskills-extension` skill.
 
-**Verification**: Code Hardener score 1000/1000 across 12 scanners. Claude adversarial review PASS WITH NOTES — all HIGH findings remediated in `e26fdb1`. Gemini-CLI was structurally unavailable for this workload (documented in `docs/adversarial-review-2026-05-20.md`). See also `docs/hardening-report-2026-05-20.md` and the per-enhancement QA reports in `docs/plans/`.
+**Verification**: Code Hardener score 1000/1000 across 12 scanners. Claude adversarial review PASS WITH NOTES — all HIGH findings remediated in `e26fdb1`. Gemini-CLI was structurally unavailable for this workload . See also `docs/hardening-report-2026-05-20.md`.
 
 ## Deterministic Workflows (opt-in)
 
@@ -162,11 +162,11 @@ Five `.claude/hookify.*.local.md` rules ship with this repo to enforce conductor
 - `require-gemini-validation` — blocks `Stop` event until every agent dispatch has a corresponding Gemini validation
 - `verify-before-claiming-done` — blocks `Stop` until verification evidence is shown
 
-These rules require the [hookify plugin](https://github.com/bulletproofsoftware-ai/hookify-plugin). Disable per-rule via `/hookify configure`.
+These rules require the a hookify plugin. Disable per-rule via `/hookify configure`.
 
 ## Schema (`schemas/conductor-state.schema.json`)
 
-1,913 lines covering:
+2,415 lines covering:
 
 - Tier classification + signals + override tracking
 - NHI (Non-Human Identity) registry — every agent dispatch tracked with spawn/terminate times, parent lineage, tool usage, token consumption
@@ -246,7 +246,7 @@ CI runs the same checks via `.github/workflows/validate.yml`.
   marketplace.json           Marketplace entry
 commands/
   conduct.md                 /conduct slash command (BEGIN_CANONICAL block duplicates conductor-kernel/lib/dispatcher-core.md verbatim)
-agents/                      19 dev-domain agent definitions (.md with YAML frontmatter)
+agents/                      18 agent definitions (17 agents + dispatcher) (.md with YAML frontmatter)
 hooks/
   hooks.json                 Hook trigger manifest
   scripts/
@@ -257,7 +257,7 @@ schemas/
   conductor-state.schema.json    Legacy v2.0 schema (kernel v3.0 schema lives in conductor-kernel/schemas/)
 domains/dev/
   tracker.yaml               BRD tracker location for dev domain
-agent-cards/                 11 dev-agent JSON identity manifests (agent_id: conductor-dev:<name>)
+agent-cards/                 10 dev-agent JSON identity manifests (agent_id: conductor-dev:<name>)
 tests/
   validate-plugin.sh         Local CI mirror
 .github/workflows/
@@ -268,10 +268,10 @@ docs/                        Architecture decisions, retrospectives, runbooks
 ## Companion Tools
 
 - **[conductor-kernel](https://github.com/bulletproofsoftware-ai/bulletproof-conductor-kernel)** — required dependency (>= 0.1.0). Supplies orchestration primitives, 19 kernel agents, and 14 skills.
-- **[conductor-dashboard](https://github.com/bulletproofsoftware-ai/conductor-dashboard)** — real-time UI watching `conductor-state.json` via filesystem events
-- **[claude-memory-plugin](https://github.com/bulletproofsoftware-ai/claude-memory-plugin)** — Qdrant-backed persistent memory used by `conductor-kernel:retrospective`
-- **[governance-plugin](https://github.com/bulletproofsoftware-ai/governance-plugin)** — identity manifests, constitutional contracts, audit bus integration
-- **[hookify-plugin](https://github.com/bulletproofsoftware-ai/hookify-plugin)** — required for the `.claude/hookify.*.local.md` enforcement rules
+- **conductor-dashboard *(companion, not yet open-sourced)*** — real-time UI watching `conductor-state.json` via filesystem events
+- **[claude-memory-plugin](https://github.com/bulletproofsoftware-ai/bulletproof-memory)** — Qdrant-backed persistent memory used by `conductor-kernel:retrospective`
+- **[governance-plugin](https://github.com/bulletproofsoftware-ai/bulletproof-governance-plugin)** — identity manifests, constitutional contracts, audit bus integration
+- **hookify-plugin *(external)*** — required for the `.claude/hookify.*.local.md` enforcement rules
 
 ## Reporting Issues / Vulnerabilities
 

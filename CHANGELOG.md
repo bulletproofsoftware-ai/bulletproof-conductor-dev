@@ -87,6 +87,6 @@ All notable changes to this plugin are documented here. Format follows [Keep a C
 - C-BOM (Cryptographic Bill of Materials) generation in `conductor-ciso`
 - PQC readiness assessment field in `project_characteristics`
 
-[Unreleased]: https://github.com/bulletproofsoftware-ai/conductor-plugin/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/bulletproofsoftware-ai/conductor-plugin/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/bulletproofsoftware-ai/conductor-plugin/releases/tag/v1.0.0
+[Unreleased]: https://github.com/bulletproofsoftware-ai/bulletproof-conductor-dev/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/bulletproofsoftware-ai/bulletproof-conductor-dev/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/bulletproofsoftware-ai/bulletproof-conductor-dev/releases/tag/v1.0.0

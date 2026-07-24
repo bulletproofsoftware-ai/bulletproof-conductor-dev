@@ -355,7 +355,7 @@ For projects USING this plugin, the audit_sink emitter (now real — see `docs/A
 
 | Control | Implementation |
 |---------|----------------|
-| Source of truth | git (https://github.com/bulletproofsoftware-ai/conductor-plugin) |
+| Source of truth | git (https://github.com/bulletproofsoftware-ai/bulletproof-conductor-dev) |
 | Branch protection | `main` branch protected (CI must pass; force-push disabled) |
 | Code review | All plugin-internal changes reviewed by Claude + Gemini adversarial review per the 2026-04-16 process |
 | CI gates | shellcheck, JSON Schema validation, yamllint, agent registry consistency, agent frontmatter validation, skill reference existence, hook smoke tests, gitleaks |
