@@ -1,0 +1,18 @@
+# gitleaks config for bulletproof-conductor-dev.
+# Allowlists documentation examples: agent-definition markdown contains illustrative
+# curl commands and placeholder keys (e.g. SonarQube's default admin:admin demo
+# credentials, a fake GPG key id ABCD1234EFGH5678). No real secrets present.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Doc examples with placeholder credentials"
+paths = [
+  '''agents/.*\.md$''',
+  '''docs/.*\.md$''',
+]
+regexes = [
+  '''admin:admin''',
+  '''ABCD1234EFGH5678''',
+]
