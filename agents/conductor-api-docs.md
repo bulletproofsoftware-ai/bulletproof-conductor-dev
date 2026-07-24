@@ -5,7 +5,7 @@ description: >
 
   <example>
   Context: User needs API documentation
-  user: "Document the API endpoints in the Paranoid application"
+  user: "Document the API endpoints in the application"
   assistant: "I'll use the api-docs agent to generate OpenAPI specifications and documentation."
   </example>
   <example>
