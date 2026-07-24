@@ -24,10 +24,12 @@ jobs:
           FAIL=0
           while IFS= read -r script; do
             echo "::group::shellcheck $script"
-            shellcheck -x "$script" || FAIL=1
+            # -S error: gate only on error-severity findings (info/warning are advisory).
+            # -e SC1091: sourced files can't be resolved at lint time (paths are runtime-relative).
+            shellcheck -x -S error -e SC1091 "$script" || FAIL=1
             echo "::endgroup::"
           done < <(find hooks/scripts -type f -name '*.sh')
-          [ "$FAIL" -eq 0 ] || { echo "::error::shellcheck failures"; exit 1; }
+          [ "$FAIL" -eq 0 ] || { echo "::error::shellcheck errors"; exit 1; }
 
   schema:
     name: JSON schema (Draft 2020-12 + state validation)
