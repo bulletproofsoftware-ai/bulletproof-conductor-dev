@@ -49,8 +49,13 @@ def sanitize(text: str) -> str:
     )
 
     # .env-file-style assignments where the variable name signals a secret.
+    #
+    # The value alternatives are ordered so quoted forms win: a bare \S+
+    # stops at the first space, so SECRET_KEY="my secret value" redacted only
+    # `"my` and printed the rest of the secret in clear text.
     text = re.sub(
-        r"((?:SECRET|TOKEN|KEY|PASSWORD|PASSWD|PWD)[A-Z0-9_]*\s*=\s*)\S+",
+        r"((?:SECRET|TOKEN|KEY|PASSWORD|PASSWD|PWD)[A-Z0-9_]*\s*=\s*)"
+        r"(\"[^\"\n]*\"|'[^'\n]*'|\S+)",
         r"\1[REDACTED]",
         text,
         flags=re.IGNORECASE,
