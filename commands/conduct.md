@@ -84,7 +84,7 @@ Run a phase-scoped deterministic Workflow script. **Opt-in only** — never auto
 1. Parse the workflow name from `$ARGUMENTS` (after the literal `workflow`). Accept `hardening` or `adversarial`. If empty/unknown, list the two valid names and stop.
 2. Resolve the script path with an explicit name→file mapping (do NOT template the filename): `hardening` → `$CLAUDE_PLUGIN_ROOT/workflows/hardening-loop.js`; `adversarial` → `$CLAUDE_PLUGIN_ROOT/workflows/adversarial-review.js`. Expand `$CLAUDE_PLUGIN_ROOT` via `bash -c 'echo "$CLAUDE_PLUGIN_ROOT"'`.
 3. Build `args`:
-   - `hardening`: `{ projectName, projectPath }` from `conductor-state.json` (`project_name`, cwd).
+   - `hardening`: `{ projectName, projectPath, codehardenerUrl, codehardenerUser }` — `projectName` and `projectPath` from `conductor-state.json` (`project_name`, cwd); `codehardenerUrl` from `$CODEHARDENER_URL` and `codehardenerUser` from `$CODEHARDENER_USER` (read via `bash -c 'echo "$CODEHARDENER_URL"'`), each omitted when unset so the script falls back to `http://localhost:7002` / `dev@codehardener.local`.
    - `adversarial`: `{ diff }` — build the diff payload exactly as the Adversarial Code Review Phase Step 1 prescribes (`git diff main...HEAD`, fallback `git diff HEAD~10..HEAD`).
 4. Invoke `Workflow({ scriptPath: "<resolved path>", args })`.
 5. On the completion notification, read the returned JSON and persist via `state_advance` (the workflow does NOT write state). Field mapping is the conductor's job:
@@ -92,7 +92,7 @@ Run a phase-scoped deterministic Workflow script. **Opt-in only** — never auto
    - `adversarial`: dispatch fix agents for `mustFix` (same pattern as the Hardening Loop), document `disputed` only, then re-run `/conduct workflow hardening` to confirm the score still holds; record `mustFix`/`disputed`/`debateRoundsUsed` into `conductor-state.json.adversarialReview`.
 6. Commit the state update (git ratchet) — the conductor owns this, not the workflow.
 
-**Prerequisite (hardening)**: Code Hardener backend on `localhost:7002` (`cd ~/Code/codehardener && docker compose up -d`). If unreachable, report and stop — do not silently skip.
+**Prerequisite (hardening)**: a reachable Code Hardener backend. Resolve the base URL from `$CODEHARDENER_URL`, defaulting to `http://localhost:7002`. If unreachable, apply the degradation rules in [Prerequisites](#prerequisites) below — never silently skip.
 
 ### If `$ARGUMENTS` starts with "agent-status":
 1. Read `data/agent-quality-registry.json` (relative to plugin root)
@@ -650,9 +650,50 @@ After all implementation and verification phases complete, run the Code Hardener
 **Deterministic execution (opt-in).** This loop is also available as a deterministic Workflow script at `workflows/hardening-loop.js`, invoked via `/conduct workflow hardening`. The script encodes the scan-fix-rescan loop, the 5-iteration cap, the per-file fan-out, and the per-iteration git ratchet as code so no step can be skipped. The prose algorithm below remains the canonical spec the script implements; when the operator opts into workflow execution, prefer the script and consume its returned `{ history, finalScore, converged }`.
 
 ### Prerequisites
-- Code Hardener backend running on `localhost:7002` (API base path `/api/v1`)
-- Docker stack: `cd ~/Code/codehardener && docker compose up -d`
-- The `X-User-Id` dev identity must have an active plan with available **scan quota** — `POST /api/v1/scans` is gated by `enforceScanLimit`; an exhausted/zero quota rejects scans before they start.
+
+- **Code Hardener backend.** Resolve the base URL from `$CODEHARDENER_URL`,
+  defaulting to `http://localhost:7002`. The API base path is `/api/v1`, so
+  requests go to `${CODEHARDENER_URL:-http://localhost:7002}/api/v1/...`.
+  Code Hardener is a separate, optional service:
+  [bulletproof-codehardener](https://github.com/bulletproofsoftware-ai/bulletproof-codehardener).
+  Start it per its own README (it ships a Docker stack) and export
+  `CODEHARDENER_URL` if you publish it on a different host or port.
+- The `X-User-Id` identity (from `$CODEHARDENER_USER`, default
+  `dev@codehardener.local`) must have an active plan with available **scan
+  quota** — `POST /api/v1/scans` is gated by `enforceScanLimit`; an exhausted
+  or zero quota rejects scans before they start.
+
+#### When Code Hardener is unreachable
+
+Probe once with a short timeout
+(`curl -sf --max-time 5 "${CODEHARDENER_URL:-http://localhost:7002}/api/v1/health"`).
+The gate is **mandatory by default** — it degrades, it is never silently
+skipped, and the outcome is always recorded in `conductor-state.json`:
+
+| Tier | Behaviour when unreachable |
+|------|----------------------------|
+| **MAJOR** | **BLOCK.** Report the resolved URL and stop. Hardening evidence is required at this tier. The operator either starts the service, sets `CODEHARDENER_URL`, or explicitly overrides (below). |
+| **STANDARD** | **BLOCK by default**, with an explicit operator override available. |
+| **MINOR** | **DEGRADE.** Record `hardening.status = "skipped_unavailable"` with the resolved URL and a timestamp, warn plainly, and continue. |
+| **TRIVIAL** | Gate does not run. |
+
+Record the outcome in `conductor-state.json.hardening`:
+
+```json
+{
+  "status": "skipped_unavailable",
+  "reason": "codehardener_unreachable",
+  "resolved_url": "http://localhost:7002",
+  "tier": "MINOR",
+  "observed_at": "<ISO-8601>"
+}
+```
+
+An operator may override a blocking tier for a single run with
+`/conduct workflow hardening --allow-unavailable`. Doing so records
+`status: "skipped_operator_override"` alongside the same fields, so the
+release evidence shows the gate did not run and who chose that. Never record
+a skipped gate as a pass.
 
 ### Hardening Loop Algorithm
 
@@ -663,30 +704,30 @@ Execute scan-fix-rescan cycles until quality score = 1000 and zero open findings
 1. **Trigger scan** via curl:
 ```bash
 # Get or create project
-PROJECT_ID=$(curl -s -X POST http://localhost:7002/api/v1/projects \
+PROJECT_ID=$(curl -s -X POST "${CODEHARDENER_URL:-http://localhost:7002}"/api/v1/projects \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: dev@codehardener.local" \
+  -H "X-User-Id: ${CODEHARDENER_USER:-dev@codehardener.local}" \
   -d '{"name": "PROJECT_NAME", "repoPath": "PROJECT_PATH"}' | jq -r '.data.id // empty')
 
 # Start comprehensive scan
-SCAN_ID=$(curl -s -X POST http://localhost:7002/api/v1/scans \
+SCAN_ID=$(curl -s -X POST "${CODEHARDENER_URL:-http://localhost:7002}"/api/v1/scans \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: dev@codehardener.local" \
+  -H "X-User-Id: ${CODEHARDENER_USER:-dev@codehardener.local}" \
   -d "{\"projectId\": \"$PROJECT_ID\", \"profile\": \"comprehensive\"}" | jq -r '.data.id')
 ```
 
 2. **Poll until complete** (max 600s):
 ```bash
-curl -s http://localhost:7002/api/v1/scans/$SCAN_ID \
-  -H "X-User-Id: dev@codehardener.local" | jq '.data.status, .data.score, .data.findingsCount'
+curl -s "${CODEHARDENER_URL:-http://localhost:7002}"/api/v1/scans/$SCAN_ID \
+  -H "X-User-Id: ${CODEHARDENER_USER:-dev@codehardener.local}" | jq '.data.status, .data.score, .data.findingsCount'
 ```
 
 3. **Check score**: If score = 1000 and total open findings = 0 → exit loop, proceed to adversarial review.
 
 4. **Fetch open findings**:
 ```bash
-curl -s "http://localhost:7002/api/v1/scans/$SCAN_ID/findings?status=open" \
-  -H "X-User-Id: dev@codehardener.local" | jq '.data'
+curl -s "${CODEHARDENER_URL:-http://localhost:7002}/api/v1/scans/$SCAN_ID/findings?status=open" \
+  -H "X-User-Id: ${CODEHARDENER_USER:-dev@codehardener.local}" | jq '.data'
 ```
 
 5. **Group findings by file** and dispatch fix agents via Task tool:
@@ -883,14 +924,14 @@ Write verbose dialog to `docs/adversarial-review-YYYY-MM-DD.md` with format:
 
 ```bash
 # Generate report via API
-REPORT_ID=$(curl -s -X POST http://localhost:7002/api/v1/reports \
+REPORT_ID=$(curl -s -X POST "${CODEHARDENER_URL:-http://localhost:7002}"/api/v1/reports \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: dev@codehardener.local" \
+  -H "X-User-Id: ${CODEHARDENER_USER:-dev@codehardener.local}" \
   -d "{\"title\": \"Final Hardening Report\", \"reportType\": \"scan_detail\", \"format\": \"markdown\", \"scanId\": \"$LAST_SCAN_ID\"}" | jq -r '.data.id')
 
 # Download report
-curl -s http://localhost:7002/api/v1/reports/$REPORT_ID/download \
-  -H "X-User-Id: dev@codehardener.local" > docs/hardening-report-$(date +%Y-%m-%d).md
+curl -s "${CODEHARDENER_URL:-http://localhost:7002}"/api/v1/reports/$REPORT_ID/download \
+  -H "X-User-Id: ${CODEHARDENER_USER:-dev@codehardener.local}" > docs/hardening-report-$(date +%Y-%m-%d).md
 ```
 
 ---

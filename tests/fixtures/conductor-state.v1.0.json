@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "domain": "dev",
+  "project_name": "example-project",
+  "project_description": "Representative pre-kernel-split conductor-state.json used to verify the kernel schema still accepts the legacy v1.0 shape.",
+  "initiated_at": "2026-01-15T09:00:00Z",
+  "last_updated": "2026-01-15T14:32:00Z",
+  "working_directory": "/path/to/example-project",
+  "tier": "STANDARD",
+  "tier_override": false,
+  "current_phase": {
+    "number": 3,
+    "name": "Implementation"
+  },
+  "current_step": {
+    "number": 11,
+    "name": "Code generation",
+    "assigned_agent": "conductor-dev:builder",
+    "status": "in_progress"
+  },
+  "task_queue": [],
+  "completed_tasks": [
+    {
+      "step": 1,
+      "name": "Requirements research",
+      "agent": "conductor-kernel:research",
+      "outcome": "success"
+    }
+  ],
+  "blocked_tasks": [],
+  "agents_invoked": ["conductor-kernel:research", "conductor-dev:architect"],
+  "verification_status": {
+    "extraction_complete": true,
+    "specs_complete": true,
+    "implementation_complete": false,
+    "final_verification": false
+  },
+  "gemini_validations": [],
+  "remediation_loops": 0,
+  "critic_rejections": 0
+}

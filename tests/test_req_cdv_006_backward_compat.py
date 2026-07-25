@@ -42,29 +42,78 @@ except ImportError:
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-KERNEL_SCHEMA = (
-    REPO_ROOT.parent / "conductor-kernel" / "schemas" / "workflow-state.schema.json"
-)
+
+
+def _kernel_schema_path() -> Path | None:
+    """Locate the kernel's workflow-state schema.
+
+    The kernel is a separate plugin whose install location this repository does
+    not assume. Resolution order:
+
+      1. $CONDUCTOR_KERNEL_SCHEMA  — the schema file itself
+      2. $CONDUCTOR_KERNEL_ROOT    — the kernel plugin directory
+      3. a sibling ``conductor-kernel`` checkout, if one happens to exist
+
+    Returns None when the kernel cannot be located, which the caller reports as
+    SKIP rather than failure — this test validates a cross-plugin contract and
+    simply cannot run without the other side of it.
+    """
+    import os
+
+    explicit = os.environ.get("CONDUCTOR_KERNEL_SCHEMA", "").strip()
+    if explicit:
+        return Path(os.path.expanduser(explicit))
+
+    root = os.environ.get("CONDUCTOR_KERNEL_ROOT", "").strip()
+    if root:
+        return Path(os.path.expanduser(root)) / "schemas" / "workflow-state.schema.json"
+
+    for sibling in ("conductor-kernel", "bulletproof-conductor-kernel"):
+        candidate = (
+            REPO_ROOT.parent / sibling / "schemas" / "workflow-state.schema.json"
+        )
+        if candidate.exists():
+            return candidate
+
+    return None
+
+
+KERNEL_SCHEMA = _kernel_schema_path()
 
 # (label, path, in_scope_for_req_cdv_006)
+#
+# The committed fixture is a representative legacy v1.0 state file. It is the
+# in-scope compat target so this test runs on a clean clone.
+#
+# If a real in-flight conductor-state.json is present in the working tree it is
+# validated too, which catches drift in a live workflow — but its absence is not
+# a failure, since it is a runtime artifact rather than a tracked file.
 FIXTURES: List[Tuple[str, Path, bool]] = [
     (
-        "conductor-dev/conductor-state.json (live v1.0)",
-        REPO_ROOT / "conductor-state.json",
+        "tests/fixtures/conductor-state.v1.0.json (committed legacy shape)",
+        REPO_ROOT / "tests" / "fixtures" / "conductor-state.v1.0.json",
         True,
     ),
     (
-        "conductor-dev/conductor-state.json.bak-prd12-17 (archival snapshot)",
-        REPO_ROOT / "conductor-state.json.bak-prd12-17",
+        "conductor-state.json (live workflow, if present)",
+        REPO_ROOT / "conductor-state.json",
         False,
     ),
 ]
 
 
 def main() -> int:
-    if not KERNEL_SCHEMA.exists():
-        print(f"FAIL (2): kernel schema not found at {KERNEL_SCHEMA}", file=sys.stderr)
-        return 2
+    if KERNEL_SCHEMA is None or not KERNEL_SCHEMA.exists():
+        print("SKIP (77): conductor-kernel schema not found.")
+        print()
+        print("  This test validates a contract between two plugins, so it needs")
+        print("  the kernel's workflow-state.schema.json. Point it at your install:")
+        print("    export CONDUCTOR_KERNEL_ROOT=/path/to/conductor-kernel")
+        print("  or name the schema file directly:")
+        print("    export CONDUCTOR_KERNEL_SCHEMA=/path/to/workflow-state.schema.json")
+        print()
+        print("  Kernel: https://github.com/bulletproofsoftware-ai/bulletproof-conductor-kernel")
+        return 77
 
     with KERNEL_SCHEMA.open() as f:
         schema = json.load(f)

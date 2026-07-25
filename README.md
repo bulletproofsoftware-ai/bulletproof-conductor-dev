@@ -23,26 +23,52 @@ Key design properties:
 
 ## Installation
 
-### Local development
+`conductor-dev` is the development-workflow domain plugin. It requires
+[`conductor-kernel`](https://github.com/bulletproofsoftware-ai/bulletproof-conductor-kernel),
+which supplies the shared agents and orchestration primitives. **Install the
+kernel first** — `/conduct` dispatches kernel agents and will not work without it.
 
-```bash
-# 1. Install conductor-kernel first (required dependency)
-git clone https://github.com/bulletproofsoftware-ai/bulletproof-conductor-kernel.git
-ln -s "$(pwd)/conductor-kernel" ~/.claude/plugins/local/conductor-kernel
+Run these in Claude Code:
 
-# 2. Install conductor-dev
-git clone https://github.com/bulletproofsoftware-ai/bulletproof-conductor-dev.git conductor-dev
-ln -s "$(pwd)/conductor-dev" ~/.claude/plugins/local/conductor-dev
+```
+/plugin marketplace add bulletproofsoftware-ai/bulletproof-conductor-kernel
+/plugin install conductor-kernel@bulletproof-conductor-kernel
+
+/plugin marketplace add bulletproofsoftware-ai/bulletproof-conductor-dev
+/plugin install conductor-dev@bulletproof-conductor-dev
 ```
 
-Then enable both plugins in Claude Code via your plugin marketplace settings.
+Verify both are enabled:
 
-### From marketplace (when published)
+```
+/plugin list
+```
+
+### Prerequisites
+
+| Requirement | Status | Notes |
+|-------------|--------|-------|
+| `conductor-kernel` | **Required** | Supplies the agents `/conduct` dispatches. |
+| `git` | **Required** | Ratchet commits at phase boundaries. |
+| `jq`, `python3` | Recommended | Used by hooks and the validation suite. |
+| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | Optional | Independent validation after agent dispatches. Without it, validation steps are skipped and recorded as `GEMINI:UNAVAILABLE` — the workflow continues. |
+| [Code Hardener](https://github.com/bulletproofsoftware-ai/bulletproof-codehardener) | Optional | Powers the hardening gate. Without it, the gate degrades per the tier rules in [`commands/conduct.md`](commands/conduct.md). |
+| `shellcheck`, `gitleaks` | Optional | Needed for full coverage in `tests/validate-plugin.sh`. |
+
+Neither Gemini CLI nor Code Hardener is bundled. See
+[Optional integrations](#optional-integrations) for how each degrades when absent.
+
+### Verify the install
+
+From a clone of this repository:
 
 ```bash
-claude plugin install conductor-kernel
-claude plugin install conductor-dev
+bash tests/validate-plugin.sh
 ```
+
+This runs shellcheck (matching CI severity), JSON-schema validation, agent
+frontmatter checks, hook smoke tests, and a secrets scan. Checks whose tooling
+is missing report SKIP rather than failing.
 
 ## Quick Start
 
@@ -267,6 +293,45 @@ tests/
   validate.yml               CI: shellcheck + schema + yamllint + consistency + secrets
 docs/                        Architecture decisions, retrospectives, runbooks
 ```
+
+## Optional integrations
+
+Two external tools sharpen the workflow. Neither is bundled, and the plugin
+states plainly when one is missing rather than pretending the gate ran.
+
+### Gemini CLI
+
+Used to independently validate agent output after a dispatch. Install
+[gemini-cli](https://github.com/google-gemini/gemini-cli) and ensure `gemini`
+is on `PATH`.
+
+When absent, validation steps are recorded as `GEMINI:UNAVAILABLE` in
+`conductor-state.json` and the workflow continues. A skipped validation is
+never recorded as a pass.
+
+### Code Hardener
+
+Powers the hardening gate (scan → fix → rescan, up to 5 iterations). Run
+[bulletproof-codehardener](https://github.com/bulletproofsoftware-ai/bulletproof-codehardener)
+per its own README.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CODEHARDENER_URL` | `http://localhost:7002` | Base URL of the backend. API paths hang off `/api/v1`. |
+| `CODEHARDENER_USER` | `dev@codehardener.local` | Identity sent as the `X-User-Id` header. |
+
+The gate is **mandatory by default** and degrades by tier when the service is
+unreachable — MAJOR blocks, STANDARD blocks with an explicit override, MINOR
+records `hardening.status = "skipped_unavailable"` and continues. The full
+rules live in [`commands/conduct.md`](commands/conduct.md).
+
+### Other environment variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `CONDUCTOR_KERNEL_ROOT` | — | Absolute path to the installed `conductor-kernel`, used when invoking kernel helper scripts directly. |
+| `MEMORY_FILE` | `~/.claude/memory/MEMORY.md` | File the `memory_note` hook edits. Must already exist with the Live Notes markers. |
+| `CONDUCTOR_DOC_SYNC_HOOK` | — | Executable invoked with a generated document path after `templates/scaffold-compliance.sh` runs. Unset means no sync. |
 
 ## Companion Tools
 

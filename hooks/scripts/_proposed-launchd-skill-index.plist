@@ -5,7 +5,13 @@
   REFERENCE PLIST — Hermes E2 Nightly Skill Index Rebuild
   =========================================================
   DO NOT install from the repository directly.
+  IMPORTANT: launchd does NOT expand "~" or environment variables in
+  ProgramArguments. Replace the /ABSOLUTE/PATH/TO placeholder below with the
+  real absolute path to your conductor-kernel install before loading.
+
   Operator installation procedure:
+    0. Edit ProgramArguments: replace /ABSOLUTE/PATH/TO/conductor-kernel with
+       the absolute path where conductor-kernel is installed.
     1. Copy to ~/Library/LaunchAgents/com.conductor.skill-index.plist
     2. Load: launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.conductor.skill-index.plist
     3. Verify: launchctl list | grep skill-index
@@ -34,7 +40,8 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>~/Code/conductor-kernel/scripts/build-skill-index.sh</string>
+    <!-- Replace with an absolute path; "~" is NOT expanded by launchd. -->
+    <string>/ABSOLUTE/PATH/TO/conductor-kernel/scripts/build-skill-index.sh</string>
   </array>
 
   <key>WorkingDirectory</key>

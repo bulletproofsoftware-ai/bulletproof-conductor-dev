@@ -389,7 +389,7 @@ This is the simplest production setup if you already have Wazuh agents deployed.
 
 Run the included smoke test:
 ```bash
-bash ~/Code/conductor-plugin/tests/test-audit-emitter.sh
+bash "$CLAUDE_PLUGIN_ROOT/tests/test-audit-emitter.sh"   # or ./tests/test-audit-emitter.sh from a clone
 ```
 Expected: file transport produces JSON-lines; syslog-udp captures via netcat in RFC 5424 format; emit_count increments.
 

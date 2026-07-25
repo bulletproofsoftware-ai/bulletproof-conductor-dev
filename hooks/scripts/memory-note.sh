@@ -8,6 +8,14 @@
 #   memory-note.sh replace <substring> <new_text>
 #   memory-note.sh remove  <substring>
 #
+# Environment:
+#   MEMORY_FILE   Path to the MEMORY.md this hook edits.
+#                 Default: ~/.claude/memory/MEMORY.md
+#                 The file must already exist and contain the
+#                 <!-- LIVE_NOTES_START --> / <!-- LIVE_NOTES_END --> markers;
+#                 this hook edits only the region between them and never
+#                 creates the file.
+#
 # Exit codes:
 #   0  success
 #   1  would exceed 2200-char cap (add/replace)

@@ -1,7 +1,7 @@
 export const meta = {
   name: 'conductor-hardening-loop',
   description: 'Code Hardener scan-fix-rescan loop until score 1000 / zero open findings, max 5 iterations',
-  whenToUse: 'STANDARD/MINOR/MAJOR dev workflows after implementation, when Code Hardener (localhost:7002) is up',
+  whenToUse: 'STANDARD/MINOR/MAJOR dev workflows after implementation, when a Code Hardener backend is reachable (args.codehardenerUrl, default http://localhost:7002)',
   phases: [
     { title: 'Scan' },
     { title: 'Fix' },
@@ -10,6 +10,11 @@ export const meta = {
 
 const PROJECT = args && args.projectName ? args.projectName : 'unnamed-project';
 const PROJECT_PATH = args && args.projectPath ? args.projectPath : '.';
+// Code Hardener base URL. The conductor passes args.codehardenerUrl, resolved
+// from $CODEHARDENER_URL; the default matches the service's own default port.
+const CH_URL = (args && args.codehardenerUrl) || 'http://localhost:7002';
+// Identity sent as X-User-Id. Override for a non-default Code Hardener install.
+const CH_USER = (args && args.codehardenerUser) || 'dev@codehardener.local';
 const MAX_ITER = 5;
 
 const SCAN_SCHEMA = {
@@ -57,7 +62,7 @@ const FIX_SCHEMA = {
 
 const scanPrompt = (iter) =>
   `Run a Code Hardener COMPREHENSIVE scan for project "${PROJECT}" at repo path "${PROJECT_PATH}". ` +
-  `Use the local Code Hardener API at http://localhost:7002 with header "X-User-Id: dev@codehardener.local":\n` +
+  `Use the Code Hardener API at ${CH_URL} with header "X-User-Id: ${CH_USER}":\n` +
   `1. POST /api/v1/projects {"name":"${PROJECT}","repoPath":"${PROJECT_PATH}"} to get or reuse the project id.\n` +
   `2. POST /api/v1/scans {"projectId":"<id>","profile":"comprehensive"} to start a scan.\n` +
   `3. Poll GET /api/v1/scans/<scanId> until status is terminal (max 600s).\n` +

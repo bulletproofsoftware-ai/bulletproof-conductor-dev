@@ -44,7 +44,7 @@ Every agent dispatch is followed by an independent `conductor-kernel:gemini-vali
 
 ### Kernel Agents (referenced as `conductor-kernel:<name>`)
 
-`critic`, `ciso`, `completeness-validator`, `gemini-validator`, `analyze-codebase`, `bug-find`, `compliance`, `compliance-overview`, `llm-security`, `supply-chain-security`, `pentest-coordinator`, `secrets-lifecycle`, `research`, `retrospective`, `outcome-collector`, `checkpoint`, `event-router`, `prediction-engine`, `recovery-engine` — all live in `~/Code/conductor-kernel/agents/`.
+`critic`, `ciso`, `completeness-validator`, `gemini-validator`, `analyze-codebase`, `bug-find`, `compliance`, `compliance-overview`, `llm-security`, `supply-chain-security`, `pentest-coordinator`, `secrets-lifecycle`, `research`, `retrospective`, `outcome-collector`, `checkpoint`, `event-router`, `prediction-engine`, `recovery-engine` — all live in the installed `conductor-kernel` plugin under `agents/`.
 
 ### State Files (generated at runtime in target projects)
 - `conductor-state.json` — workflow state. Backward compatible: schema_version "1.0" / "1.0.0" loads against `conductor-kernel/schemas/workflow-state.schema.json` (REQ-CDV-002).
@@ -71,7 +71,7 @@ Skills moved to `conductor-kernel` (14 skills: context-management, retry-policy,
 
 When editing agents: each `.md` file in `agents/` is a self-contained agent prompt with YAML frontmatter. The agent name must match the filename (e.g., `conductor-builder.md` defines the `conductor-builder` agent — dispatched as `conductor-dev:builder`).
 
-When editing kernel agents/skills: edit them in `~/Code/conductor-kernel/`, NOT here.
+When editing kernel agents/skills: edit them in your `conductor-kernel` checkout, NOT here.
 
 When editing the canonical orchestration prose: edit `conductor-kernel/lib/dispatcher-core.md` FIRST, then re-run `scripts/ci-dispatcher-diff.sh` to refresh the sync_hash in `commands/conduct.md`. Editing the canonical block inside conduct.md directly breaks the CI hash gate (RC-16).
 

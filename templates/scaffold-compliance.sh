@@ -18,19 +18,19 @@ set -euo pipefail
 # Parse args: --conductor pre-fills from conductor-state.json + BRD-tracker.json
 CONDUCTOR_MODE=0
 TARGET=""
-SYNC_OBSIDIAN=1
+RUN_SYNC_HOOK=1
 for arg in "$@"; do
     case "$arg" in
         --conductor) CONDUCTOR_MODE=1 ;;
-        --no-obsidian-sync) SYNC_OBSIDIAN=0 ;;
+        --no-sync) RUN_SYNC_HOOK=0 ;;
         --help|-h)
             cat <<USAGE
-Usage: $0 [--conductor] [--no-obsidian-sync] <target-project-dir>
+Usage: $0 [--conductor] [--no-sync] <target-project-dir>
 
 Options:
   --conductor          Pre-fill from conductor-state.json + BRD-tracker.json
                        (adds Appendix A with audit-trail snapshot)
-  --no-obsidian-sync   Do not run ~/scripts/sync-obsidian-docs.sh after generation
+  --no-sync            Do not run \$CONDUCTOR_DOC_SYNC_HOOK after generation
   --help, -h           This message
 
 Without --conductor, only basic auto-detected fields (name, date, semver) are filled.
@@ -43,7 +43,7 @@ USAGE
 done
 
 if [ -z "$TARGET" ]; then
-    echo "usage: $0 [--conductor] [--no-obsidian-sync] <target-project-dir>" >&2
+    echo "usage: $0 [--conductor] [--no-sync] <target-project-dir>" >&2
     exit 2
 fi
 
@@ -179,12 +179,17 @@ echo "  □ §25 Approval signatures"
 echo ""
 echo "Estimated effort: 20-40 hours for first issue; 4-8 hours per quarterly review."
 
-# Run Obsidian sync to make the doc visible in vault (if enabled)
-if [ "$SYNC_OBSIDIAN" -eq 1 ] && [ -x "$HOME/scripts/sync-obsidian-docs.sh" ]; then
-    echo ""
-    echo "=== Syncing to Obsidian vault ==="
-    "$HOME/scripts/sync-obsidian-docs.sh" 2>&1 | tail -5
-elif [ "$SYNC_OBSIDIAN" -eq 1 ]; then
-    echo ""
-    echo "(Obsidian sync skipped: ~/scripts/sync-obsidian-docs.sh not found or not executable)"
+# Optional post-generation sync. Set CONDUCTOR_DOC_SYNC_HOOK to an executable
+# that receives the generated document path; leave it unset to skip. Operators
+# wire this to whatever their docs live in (a vault, a wiki, a bucket).
+if [ "$RUN_SYNC_HOOK" -eq 1 ] && [ -n "${CONDUCTOR_DOC_SYNC_HOOK:-}" ]; then
+    if [ -x "$CONDUCTOR_DOC_SYNC_HOOK" ]; then
+        echo ""
+        echo "=== Running doc-sync hook ==="
+        "$CONDUCTOR_DOC_SYNC_HOOK" "$DEST" "$PROJECT_NAME" 2>&1 | tail -5 || \
+            echo "(doc-sync hook failed; the document was still generated)"
+    else
+        echo ""
+        echo "(doc-sync hook set but not executable: $CONDUCTOR_DOC_SYNC_HOOK — skipping)"
+    fi
 fi

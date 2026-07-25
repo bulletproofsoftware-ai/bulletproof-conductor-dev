@@ -51,11 +51,15 @@ check_tool shellcheck "brew install shellcheck" || true
 section "Shell scripts (shellcheck)"
 if command -v shellcheck &>/dev/null; then
     SHELL_FAIL=0
+    # Severity and exclusions MUST match .github/workflows/validate.yml so a
+    # clean local run predicts a clean CI run.
+    #   -S error : gate only on error-severity findings (info/warning advisory)
+    #   -e SC1091: sourced files are resolved at runtime, not lint time
     while IFS= read -r script; do
-        if shellcheck -x "$script" >/dev/null 2>&1; then
+        if shellcheck -x -S error -e SC1091 "$script" >/dev/null 2>&1; then
             pass "$(basename "$script")"
         else
-            fail "$(basename "$script") — run: shellcheck -x $script"
+            fail "$(basename "$script") — run: shellcheck -x -S error -e SC1091 $script"
             SHELL_FAIL=1
         fi
     done < <(find hooks/scripts -type f -name '*.sh')

@@ -875,7 +875,7 @@ If ANY check fails, dispatch via `task` mode. NEVER force code-mode; the selecto
 
 2. **Prepare the dispatch payload** by invoking the kernel helper:
    ```bash
-   bash ~/Code/conductor-kernel/scripts/code-mode-dispatch.sh \
+   bash "${CONDUCTOR_KERNEL_ROOT:?set CONDUCTOR_KERNEL_ROOT to the installed conductor-kernel plugin directory}/scripts/code-mode-dispatch.sh" \
      --agent <name> \
      --task <path-to-task.json> \
      --tool-surface <mcp__tool1,mcp__tool2,...> \

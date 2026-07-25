@@ -5,7 +5,7 @@ All notable changes to this plugin are documented here. Format follows [Keep a C
 ## [1.1.0] — 2026-05-12
 
 ### Changed (BREAKING for downstream callers — see Migration)
-- **Renamed plugin** `conductor` → `conductor-dev`. Plugin directory renamed from `~/Code/conductor-plugin` to `~/Code/conductor-dev`. Git history preserved via `mv`.
+- **Renamed plugin** `conductor` → `conductor-dev`. Plugin directory renamed from `conductor-plugin` to `conductor-dev`. Git history preserved via `mv`.
 - **Split off conductor-kernel**: 19 domain-agnostic agents and all 14 skills migrated to the new sibling plugin `conductor-kernel` (v0.1.0). conductor-dev now declares `"requires": { "conductor-kernel": ">= 0.1.0" }` in `plugin.json`.
 - **/conduct command**: the orchestration prose (tier classification, dispatch, validation, gates, state, context, outcomes, workflow templates, critical rules) is now a `BEGIN_CANONICAL`/`END_CANONICAL` block duplicating `conductor-kernel/lib/dispatcher-core.md` verbatim. Domain-specific argument routing, Code Hardener QA Phase, and Adversarial Code Review Phase remain in conductor-dev. Edit canonical source first, then re-run `scripts/ci-dispatcher-diff.sh` (REQ-CDV-004).
 - **Kernel agent references**: all `conductor-critic`, `conductor-gemini-validator`, `conductor-completeness-validator`, etc. references in conduct.md now use the qualified form `conductor-kernel:<name>`. Dev agents remain available as `conductor-dev:<name>`.
@@ -21,7 +21,7 @@ All notable changes to this plugin are documented here. Format follows [Keep a C
 
 ### Compatibility
 - Existing `conductor-state.json` files (schema_version "1.0" or "1.0.0") load against `conductor-kernel/schemas/workflow-state.schema.json` without modification (REQ-CDV-002, G-1).
-- Live in-flight workflow `~/Code/conductor-dev/conductor-state.json` validates against the kernel schema (verified at v1.1.0 release).
+- A live in-flight workflow's `conductor-state.json` validates against the kernel schema (verified at v1.1.0 release).
 - Plugin cache at `~/.claude/plugins/cache/conductor/conductor/1.0.0/` may need refresh to pick up the rename; flagged for operator follow-up.
 
 ### Migration Notes
