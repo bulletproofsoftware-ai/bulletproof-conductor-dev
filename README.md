@@ -6,7 +6,7 @@ Multi-agent workflow orchestrator with **programmatic phase-gate enforcement**, 
 
 ![bulletproof-conductor-dev — overview](docs/media/infographic.png)
 
-> **Media:** a system-overview [explainer video](media/system-overview.mp4) and [technical briefing](media/system-overview.md) accompany this README. Full docs live in [`docs/`](docs/OVERVIEW.md).
+> **Media:** a system-overview [explainer video](media/system-overview.mp4), [technical briefing](media/system-overview.md), and [slide deck](media/bulletproof-conductor-dev-deck.pdf) accompany this README. Full docs live in [`docs/`](docs/OVERVIEW.md).
 
 ## What It Does
 
