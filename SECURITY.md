@@ -99,7 +99,7 @@ The plugin's `conductor-ciso` agent maps controls to these frameworks at the BRD
 ## Known Limitations
 
 - **Single-operator state file.** Concurrent writers can corrupt `conductor-state.json`. Use git ratcheting + checkpoints to recover.
-- **Hookify rules are advisory unless paired with PreToolUse implementation.** Marc's `.claude/hookify.*.local.md` rules are enforced by the hookify plugin; they are not part of conductor's own governance.
+- **Hookify rules are advisory unless paired with PreToolUse implementation.** An operator's `.claude/hookify.*.local.md` rules are enforced by the hookify plugin; they are not part of conductor's own governance.
 - **Gemini validation degrades open.** If `gemini` CLI is unavailable, validation is skipped with a warning. This is intentional (preserve workflow availability) but reduces accountability.
 
 ## Audit Trail
