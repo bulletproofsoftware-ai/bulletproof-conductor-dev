@@ -15,7 +15,7 @@ The current version is recorded in `.claude-plugin/plugin.json`.
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Email **security@example.com** with:
+Email **marc@bulletproofsoftware.ai** with:
 
 1. A description of the vulnerability
 2. The affected component (agent, hook, schema, skill)
