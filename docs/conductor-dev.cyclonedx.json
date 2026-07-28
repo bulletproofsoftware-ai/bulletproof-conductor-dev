@@ -1,0 +1,23 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-07-28T00:50:00+00:00",
+    "component": {
+      "type": "application",
+      "name": "conductor-dev",
+      "version": "0.0.0",
+      "description": "conductor-dev \u2014 no third-party runtime dependencies"
+    }
+  },
+  "components": [],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": [
+        "conductor-dev@0.0.0"
+      ]
+    }
+  ]
+}
